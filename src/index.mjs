@@ -1,5 +1,5 @@
 import express from 'express'
-import usersRouter from "./routes/users.mjs"
+import routes from "./routes/index.mjs"
 
 // Setup Express Application
 const app = express()
@@ -11,12 +11,12 @@ app.listen(PORT, () => {
 // MIDDLEWARE
 app.use(express.json())
 
-// Base Route
+// Base/Home Route
 app.get("/", (request, response) => {
-  response.status(200).send({msg: "Hello Express!"});
+  response.status(200).send({msg: "Welcome to the Express Full Course! ⚒️"});
 });
 
 // Routers
-app.use(usersRouter)
+app.use(routes)
 
 

@@ -30,3 +30,21 @@ export const mockUsers = [
     displayName: "Meruel",
   },
 ];
+
+export const mockProducts = [
+  {
+    id: 1,
+    productName: "Chicken Breast",
+    price: 12.99
+  },
+  {
+    id: 2,
+    productName: "Light Saber",
+    price: 8.00
+  },
+  {
+    id: 3,
+    productName: "Beats by Dre",
+    price: 23.50
+  },
+];

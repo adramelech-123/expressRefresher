@@ -450,5 +450,31 @@ const router = Router()
 // GET
 router.get("/api/users", requestHandler)
 
+
+// **Ensure that the router is exported as default
+export default router;
+
+```
+In the `routes` folder we can create an `index.mjs` file to manage all our route imports in a single file as follows:
+
+```js
+import { Router } from "express";
+import usersRouter from "./users.mjs"
+import productsRouter from "./products.mjs"
+
+const router = Router()
+
+router.use(usersRouter)
+router.use(productsRouter);
+
+export default router
+```
+In the `index.mjs` file located in the src folder we can then import the routes and `use` them as middleware:
+
+```js
+import express from 'express'
+import routes from "./routes/index.mjs"
+
+app.use(routes)
 ```
 
