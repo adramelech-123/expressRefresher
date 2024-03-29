@@ -477,4 +477,52 @@ import routes from "./routes/index.mjs"
 
 app.use(routes)
 ```
+## 11. HTTP COOKIES
 
+HTTP Cookies are small pieces of data stored on a user's device by websites they visit. These data files are exchanged between a web server and a web browser, enabling the server to recognize and remember specific information about the user or their interactions with the website.
+
+Here's why HTTP cookies are needed and their key purposes:
+
+1. **Session Management**: Cookies are commonly used to manage user sessions. When a user logs into a website, a session cookie is often created to store authentication tokens or session IDs. This allows the website to recognize the user as they navigate different pages or perform actions within the same session without needing to re-authenticate for every request.
+
+2. **Personalization**: Cookies can be used to personalize the user experience. Websites can store preferences, settings, or other user-specific information in cookies, allowing them to tailor the content and functionality to individual users. For example, a website might remember a user's language preference or their selected theme.
+
+3. **Tracking and Analytics**: Cookies are frequently utilized for tracking user behavior and gathering analytics data. By storing unique identifiers in cookies, websites can track users across multiple visits, monitor their browsing habits, and gather insights into how they interact with the site. This information can be valuable for improving website performance, targeting advertisements, and optimizing user experience.
+
+4. **Shopping Carts and E-commerce**: In e-commerce websites, cookies are often used to maintain shopping cart state. When a user adds items to their cart, the selected items and quantities are stored in a cookie. This allows the items to persist between page views and even across sessions, ensuring a seamless shopping experience.
+
+5. **Authentication and Security**: Cookies play a crucial role in authentication and security mechanisms. They are used to store authentication tokens, session IDs, or other credentials securely on the client side. Properly implemented cookies help prevent unauthorized access to sensitive information and protect against session hijacking or cross-site request forgery (CSRF) attacks.
+
+6. **Targeted Advertising**: Cookies enable targeted advertising by tracking users' interests and behavior across websites. Advertisers can use this information to display relevant ads to specific audiences, increasing the likelihood of engagement and conversions.
+
+We can create cookies using the following syntax `response.cookie(cookieName, cookieValue, options)`
+
+```js
+// CookieParser Middleware with a signature
+app.use(cookieParser("myCookieSignature"))
+
+
+app.get("/", (request, response) => {
+  response.cookie('hello', 'world', {maxAge: 60000, signed: true })
+});
+```
+To use the cookies, we will need to parse them using an external library called `cookie-parser`. To install `cookie-parser` we run the following command: `npm i cookie-parser`. The option `{maxAge}` defines the expiry period for the cookie in milliseconds. Once the expiry period is reached, the cookie will be deleted. The `{signed}` option is used to set a signature for the cookie. The signature can be registered in the `cookieParser()` as any string.
+
+Suppose we only want to access the products data from the `/api/products` route if the `hello` cookie exists and is equal to `world`. In the products route file we write as follows:
+
+```js
+router.get("/api/products", (request, response) => {
+    
+    // We need to call the signedCookies method if a signature exists otherwise we can just use .cookies method
+    if(request.signedCookies.hello && request.signedCookies.hello === 'world') {
+        return response.send(mockProducts);
+    }
+
+    return response.status(403).send({msg: 'Sorry! You need the correct cookie 🍪'})
+    
+})
+
+```
+Given that the cookie expires after one minute, the products data will not be accessible after the cookie expires.
+
+## 12. SESSIONS
