@@ -438,3 +438,17 @@ app.post(
 
 ## 10. ROUTERS
 
+At some point we will need to organize our routes as our application grows. We want to group all related API endpoints based on what we call a `domain`. For example, all endpoints related to the `/api/users` domain are grouped together as one file whilst all endpoints related to the `/api/products` domain are grouped together in a separate file. We can use an `express-router` to group endpoints and access them. We do this by creating a `routes` folder to store all our router files. In the `routes` folder we create a `user.mjs` file and import the `Router` from express. We then define the router and access our HTTP Request methods fom the defined router.
+
+```js
+import { Router } from "express";
+// Import other necessary libraries e.g express-validator, middleware, etc
+
+// Define Router
+const router = Router()
+
+// GET
+router.get("/api/users", requestHandler)
+
+```
+
