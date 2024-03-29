@@ -25,8 +25,8 @@ app.listen(PORT, () => {
 
 ```
 
-## 3. Setup Routes
-The routes are basically different paths in our application that allow us to either Create, Read, Update or Delete data. There are different methods that can be applied on the express application based on whether we want to create, read, update or delete data. 
+## 3. HTTP Requests
+Routes/Endpoints are basically different paths in our application that allow us to either Create, Read, Update or Delete data. There are different methods that can be applied on the express application based on whether we want to create, read, update or delete data. 
 
 - **Create**: To create data we usually use the `post()` method
 - **Read**: To read/display data we usually use the `get()` method
@@ -293,9 +293,148 @@ For Validatig our API we will use **express-validator**. `express-validator` is 
 
 To install `express-validator` we need to run the command `npm i express-validator`
 
+### a. Validating Queries
+
 To use the express-validator, we need to import the middleware function we want to use from the express-validator package:
 
+
+
 ```js
-import {query} from "express-validator"
+import {query, validationResult} from "express-validator"
 ```
 In this case we are importing the `query` middleware function from the express-validator to validate query parameters.
+
+Suppose we use the `query` middleware function to check if the query is a string and is not empty. We would implement as follows: 
+
+```js
+// GET all users
+app.get("/api/users", query('filter').isString().notEmpty().withMessage('Must not be empty!'), (request, response) => {
+  const result = validationResult(request)
+
+  // Logging errors from the result Object
+  console.log(`Error: ${result['errors'][0]?.msg}`)
+
+});
+
+```
+In the code above, we are utilizing the query middleware on the filter query and we can access various methods/validators that we can chain together to perform the validation. However, the query middleware function alone will not return any validation results e.g. if any errors occur, therefore we need to import the `validationResult` middleware from `express-validator` in order to be able to return validation results e.g errors etc.
+
+The validators we chained on the `query` middleware are the `isString()` and the `notEmpty()` methods. These check if the query is a string and the query is not empty. If both are not true then we expect 2 errors to be logged. We can use the `withMessage()` method to create custom error messages for the validators, e.g in this case we have a custom message for the `notEmpty()` validator. If the query is empty, the error message will be `Must not be empty!` as defined in the code above.
+
+### b. Validating the Request Body
+
+To validate the body we will need to import the `body` function from `express-validator`.
+
+```js
+import {body, matchedData, validationResult } from "express-validator"
+
+// Create New User
+app.post(
+  "/api/users",
+  [body("username")
+    .notEmpty()
+    .withMessage("Username cannot be empty!")
+    .isLength({ min: 5, max: 32 })
+    .withMessage("Username must be 5 - 32 characters!")
+    .isString()
+    .withMessage('Only strings allowed!'),
+  
+    body("displayName")
+    .notEmpty()
+    .withMessage("DisplayName cannot be empty!")
+  ],
+  (request, response) => {
+    const result = validationResult(request)
+  
+
+    if(!result.isEmpty()) {
+      return response.status(400).send({errors: result.array()})
+    }
+
+    // The validated data is to be added as the newUser
+    const newUserData = matchedData(request)
+    console.log(newUserData)
+
+    const newUser = {
+      id: mockUsers[mockUsers.length - 1].id + 1,
+      ...newUserData,
+    };
+
+    mockUsers.push(newUser);
+
+    return response.status(201).send(newUser);
+  }
+);
+
+```
+
+In the example above, we applied the `body` validation on the `username` and the `displayName`, therefore we had to use an array to apply the fuction to two items. We also imported the `validationResult` function to get access to our validation results, then we also imported the `matchedData` function to access the validated data in the request body.
+
+### c. Clean Validation
+We can use a schema to apply cleaner validation. The schema is an object that holds all the validators we want to use. To do this we create a `utils` folder in the `src` folder an within the utils folder we create a `validationSchemas.mjs` file since we are using the EJS Module system. within the `validationSchemas.mjs` file, we define our user validation schema as an object and export it as follows:
+
+```js
+export const userValidationSchema = {
+  username: {
+    isLength: {
+      options: {
+        min: 5,
+        max: 32,
+      },
+      errorMessage: "Username must be 5 - 32 characters!",
+    },
+    notEmpty: {
+      errorMessage: "Username cannot be empty!",
+    },
+    isString: {
+      errorMessage: "Username must be a string!",
+    },
+  },
+
+  displayName: {
+    notEmpty: {
+      errorMessage: "Display Name cannot be empty!",
+    },
+    isString: true
+  },
+};
+
+```
+
+Basically this schema will do validation checks on the `body` username and displayName.
+
+In the `index.mjs` file we import a function called `checkSchema` to allow us to use the validation schema on our HTTP Request method (In this case POST). The `checkSchema` function is called as an argument in the `post` method.
+
+```js
+import {query, validationResult, body, matchedData, checkSchema} from 'express-validator'
+import { userValidationSchema } from "./utils/validationSchemas.mjs"
+
+// Create New User
+app.post(
+  "/api/users",
+  checkSchema(userValidationSchema),
+  (request, response) => {
+    const result = validationResult(request)
+  
+
+    if(!result.isEmpty()) {
+      return response.status(400).send({errors: result.array()})
+    }
+
+    const newUserData = matchedData(request)
+    console.log(newUserData)
+
+    const newUser = {
+      id: mockUsers[mockUsers.length - 1].id + 1,
+      ...newUserData,
+    };
+
+    mockUsers.push(newUser);
+
+    return response.status(201).send(newUser);
+  }
+);
+```
+
+## 10. ROUTERS
+
