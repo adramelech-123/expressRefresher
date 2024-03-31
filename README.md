@@ -526,3 +526,190 @@ router.get("/api/products", (request, response) => {
 Given that the cookie expires after one minute, the products data will not be accessible after the cookie expires.
 
 ## 12. SESSIONS
+
+
+Sessions in web development refer to the period of time during which a user interacts with a web application or website. Sessions allow the server to keep track of a user's activity from the time they log in until they log out or their session expires. 
+
+Sessions are created by generating an object/cookie with a session ID. When an HTTP Request is sent to the server from the web browser, the response can return with instructions to set a cookie with the `session ID` so that it can be saved in the browser. This allows the browser to send the cookie on subsequent requests to the server. The server can then parse the cookies from text to Json then verify the session ID that was sent from the client and determine who the request was sent from. 
+
+We can use the `express-session` library to manage sessions with express. To intsall express-session, we run the command `npm i express-session`. In the root `index.mjs` file, we need to `import session from "express-session"`. We then register the session as middleware and pass in some configuration options as follows:
+
+```js
+import session from "express-session"
+
+app.use(session({
+  secret: 'mysecretsessionkey',
+  saveUninitialized: false,
+  resave: false,
+  cookie: {
+    maxAge: 60000 * 60
+  }
+}))
+
+```
+
+By default, everytime the a new new request is made, a new cookie and session ID are created, however this is not ideal as we will not be able to track who the actual user is. The cookie and session ID need to remain the same so we can identify the user. We can do this by using the `request.session.visited = true` in the route we want to access.
+
+```js
+// Base/Home Route
+app.get("/", (request, response) => {
+  // console.log(request.session)
+  // console.log(`Session ID: ${request.sessionID}`)
+  request.session.visited = true
+  response.status(200).send({msg: "Welcome to the Express Full Course! ⚒️"});
+});
+
+```
+
+### Configuration Options
+1. `secret`: This is the secret used to sign the session cookie. This can be either a string for a single secret, or an array of multiple secrets. If an array of secrets is provided, only the first element will be used to sign the session ID cookie, while all the elements will be considered when verifying the signature in requests. The secret itself should be not easily parsed by a human and would best be a random set of characters
+
+2. `saveUninitialized`: Forces a session that is "uninitialized" to be saved to the store. A session is uninitialized when it is new but not modified. Choosing false is useful for implementing login sessions, reducing server storage usage, or complying with laws that require permission before setting a cookie. Choosing false will also help with race conditions where a client makes multiple parallel requests without a session.
+   
+3. `resave`: Forces the session to be saved back to the session store, even if the session was never modified during the request.
+
+
+
+### **Session Storage**
+
+When a user is authenticated, their user object is stored in the session as `request.session.user`. This session data is maintained by the server and associated with the user's session ID cookie. The session is set to expire after one hour (`maxAge: 60000 * 60`), as configured in the `cookie` object passed to `express-session`. Below is the code to authenticate a user using the `/api/auth` endpoint:
+
+```js
+app.post("/api/auth", (request, response) => {
+  const {body: {username, password}} = request
+
+  const findUser = mockUsers.find(
+    user => user.username === username
+  )
+
+  if (!findUser || findUser.password !== password)
+    return response.status(401).send({ msg: "BAD CREDENTIALS!" });
+
+  request.session.user = findUser
+  return response.status(200).send(findUser)
+})
+```
+In the code above, the user passess the `username` and `password` in the body and the function `findUser` will skim through the array of users to find a username that has the same value as that entered in the request body. If the user does not exist in the array of users or the password in the request body does not match with the user's password then the system will not allow the authentication. Otherwise the authentication will proceed and the user object we found will be stored in the session store as `request.session.user`. 
+
+Once we have an authenticated user session we can proceed to use other routes that only work when a `request.session.user` exists:
+
+```js
+
+// Route to check authentication status
+app.get("/api/auth/status", (request, response) => {
+  return request.session.user 
+  ? response.status(200).send(request.session.user) 
+  : response.status(401).send({msg: "Not Authenticated"})
+})
+
+// Route to add items to a cart
+app.post("/api/cart", (request, response) => {
+
+  if(!request.session.user) return response.sendStatus(401)
+  const {body: item } = request
+  const {cart} = request.session
+
+  if(cart) {
+    cart.push(item)
+  }
+  else {
+    request.session.cart = [item]
+  }
+
+  return response.status(201).send(item)
+})
+
+// Route to retrieve cart items
+app.get('/api/cart', (request, response) => {
+  if (!request.session.user) return response.sendStatus(401);
+  return response.send(request.session.cart ?? [])
+})
+
+```
+## 13. PASSPORT JS (Authentication & Authorization)
+
+Passport.js is a middleware for Node.js that simplifies the process of implementing authentication and authorization in web applications. It provides a flexible framework for managing user sessions, verifying user identities, and controlling access to resources. Here's an expanded explanation of the provided code snippet:
+
+### 1. Installation:
+To use Passport.js in your Node.js project, you need to install the `passport` and `passport-local` packages from npm. This can be done using the following command:
+
+```bash
+npm i passport passport-local
+```
+
+### 2. Setting up Passport:
+Passport.js allows for various authentication strategies, but in this example, we're focusing on the local strategy, which involves using a username and password stored locally in your application. 
+
+To set up Passport, you typically create a separate folder (e.g., `strategies`) to organize your authentication strategies. Within this folder, you create a file (e.g., `local-strategy.mjs`) to define and configure the local authentication strategy.
+
+### 3. Serialization and Deserialization:
+Passport requires two functions to serialize and deserialize user instances. These functions are used to manage user sessions. 
+
+- **`serializeUser`**: This function is called during the login process to determine which data of the user object should be stored in the session. Here, it simply serializes the user's `id`.
+  
+- **`deserializeUser`**: This function is called whenever a request is made to the server. It retrieves the user's data from the session store based on the serialized user `id`. In this implementation, it fetches the user object from a mock user array based on the provided `id`.
+
+### 4. Authentication Strategy:
+The local authentication strategy is defined using the `Strategy` object from `passport-local`. This strategy validates user credentials against a locally defined set of users (in this case, stored in `mockUsers`). 
+
+The `new Strategy()` constructor takes a callback function with the parameters `username`, `password`, and `done`. Inside this function:
+
+- It searches for a user with the provided `username`.
+- If the user is found, it compares the provided `password` with the user's stored password.
+- If the credentials are valid, it invokes the `done` callback with `null` as the error and the authenticated user object.
+- If the credentials are invalid, it invokes the `done` callback with an error message.
+
+### 5. Exporting the Strategy:
+Finally, the configured local authentication strategy is exported using `export default passport.use()`. This makes the strategy available for use in other parts of the application.
+
+### Conclusion:
+By following this setup, your Node.js application can now utilize Passport.js for user authentication using a local strategy. This implementation provides a basic foundation for adding user authentication to your application, and you can extend it further to meet your specific requirements, such as integrating with a database for user storage or implementing additional authentication strategies like OAuth.
+
+
+```js
+import passport from "passport";
+import { Strategy } from "passport-local";
+import { mockUsers } from "../utils/constants.mjs";
+
+
+passport.serializeUser((user, done) => {
+    console.log(`Inside Serialize user`)
+    console.log(user)
+    done(null, user.id)
+})
+
+passport.deserializeUser((id, done) => {
+    console.log(`Inside Deserializer`);
+    console.log(`Deserializing User ID: ${id}`)
+
+    try {
+        const findUser = mockUsers.find((user) => user.id === id);
+        if (!findUser) throw new Error("User not found!");
+
+        done(null, findUser)
+    } catch (error) {
+        done(error, null);
+    }
+})
+
+
+export default passport.use(
+    new Strategy((username, password, done) => {
+        console.log(`Username: ${username}`)
+        console.log(`Password: ${password}`)
+
+        try {
+            const findUser = mockUsers.find(user => user.username === username)
+            if(!findUser) throw new Error('User not found!')
+            if(findUser.password !== password) throw new Error("Invalid credentials!")
+
+            done(null, findUser)
+
+        } catch (error) {
+            done(error, null)
+        }
+    })
+)
+```
+
+

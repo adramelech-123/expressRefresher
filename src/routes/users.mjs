@@ -23,6 +23,7 @@ router.get(
   "/api/users",
   checkSchema(queryValidationSchema),
   (request, response) => {
+  
     const result = validationResult(request);
 
     // if (!result.isEmpty()) {
