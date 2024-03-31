@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { mockUsers } from "../utils/constants.mjs";
+
 import {
   resolveIndexByUserId,
   loggingMiddleware,
@@ -26,9 +27,9 @@ router.get(
   
     const result = validationResult(request);
 
-    // if (!result.isEmpty()) {
-    //   return response.status(400).send({ errors: result.array() });
-    // }
+    if (!result.isEmpty()) {
+      return response.status(400).send({ errors: result.array() });
+    }
 
     const {
       query: { filter, value },
@@ -40,8 +41,10 @@ router.get(
       );
 
     return response.send(mockUsers);
+  
   }
 );
+
 
 // GET SINGLE USER
 router.get(

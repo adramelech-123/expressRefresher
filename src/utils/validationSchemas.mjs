@@ -19,7 +19,19 @@ export const userValidationSchema = {
     notEmpty: {
       errorMessage: "Display Name cannot be empty!",
     },
-    isString: true
+    isString: true,
+  },
+
+  password: {
+    isLength: {
+      options: {
+        min: 5
+      },
+      errorMessage: "Passowrd must be a minimum of 5 characters!",
+    },
+    notEmpty: {
+      errorMessage: "Passowrd field cannot be empty!",
+    }
   },
 };
 

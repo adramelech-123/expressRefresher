@@ -3,10 +3,20 @@ import routes from "./routes/index.mjs"
 import cookieParser from 'cookie-parser'
 import session from "express-session"
 import passport from "passport"
-import "./strategies/local-strategy.mjs"
+// import "./strategies/local-strategy.mjs"
+import "./strategies/local-strategy-mongo.mjs";
+
+import mongoose from 'mongoose'
 
 // Setup Express Application
 const app = express()
+
+// Setup Database Connection
+mongoose.connect("mongodb://localhost:27017/express_tutorial")
+  .then(() => console.log('Connected to Database 🖥️'))
+  .catch((err) => console.log(`Error: ${err}`))
+
+
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   console.log(`Server is running on Port ${PORT} 😃!`)
@@ -28,32 +38,45 @@ app.use(passport.session());
 
 
 // Base/Home Route
+
 app.get("/", (request, response) => {
   request.session.visited = true;
   response.status(200).send({msg: "Welcome to the Express Full Course! ⚒️"});
 });
 
-// Authentication Endpoint
+app.use(routes);
 
-app.post("/api/auth", passport.authenticate('local'), (request, response) => {
-  response.sendStatus(200)
-})
+
+
+
+// Authentication Endpoints (Passport)
+
+app.post(
+  "/api/auth",
+  passport.authenticate("local"),
+  (request, response) => {
+    response.sendStatus(200);
+  }
+);
 
 app.get("/api/auth/status", (request, response) => {
-  console.log(`Inside /auth/status endpoint`)
-  console.log(request.user)
-  
-  return request.user ? response.send(request.user) : response.sendStatus(401)
-})
+  console.log(`Inside /auth/status endpoint`);
+  console.log(request.user);
+
+  return request.user ? response.send(request.user) : response.sendStatus(401);
+});
 
 app.post("/api/auth/logout", (request, response) => {
-  if(!request.user) return response.sendStatus(401)
+  if (!request.user) return response.sendStatus(401);
 
   request.logout((err) => {
-    if(err) return response.sendStatus(400)
-    response.sendStatus(200)
-  })
-})
+    if (err) return response.sendStatus(400);
+    response.sendStatus(200);
+  });
+});
+
+
+
 
 
 // app.post("/api/auth", (request, response) => {
@@ -101,7 +124,7 @@ app.post("/api/auth/logout", (request, response) => {
 // })
 
 
-// Routers
-app.use(routes)
+// apps
+
 
 

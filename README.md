@@ -712,4 +712,140 @@ export default passport.use(
 )
 ```
 
+We can now setup endpoints for authentication using our local strategy as follows. Note that we can use passport with `express-session`:
+
+```js
+import express from 'express'
+import routes from "./routes/index.mjs"
+import session from "express-session"
+import passport from "passport"
+import "./strategies/local-strategy.mjs"
+
+// MIDDLEWARE
+app.use(express.json())
+app.use(session({
+  secret: 'mysecretsessionkey',
+  saveUninitialized: false,
+  resave: false,
+  cookie: {
+    maxAge: 60000 * 60
+  }
+}))
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Authentication Endpoint
+
+app.post("/api/auth", passport.authenticate('local'), (request, response) => {
+  response.sendStatus(200)
+})
+
+app.get("/api/auth/status", (request, response) => {
+  
+  console.log(request.user)
+  return request.user ? response.send(request.user) : response.sendStatus(401)
+})
+
+app.post("/api/auth/logout", (request, response) => {
+  if(!request.user) return response.sendStatus(401)
+
+  request.logout((err) => {
+    if(err) return response.sendStatus(400)
+    response.sendStatus(200)
+  })
+})
+
+```
+
+## 14. DATABASE (MongoDB & Mongoose)
+
+MongoDB is a popular NoSQL database that stores data in a flexible, JSON-like format. It's known for its scalability, performance, and ease of use. Mongoose is an Object Data Modeling (ODM) library for MongoDB and Node.js that provides a higher level of abstraction for working with MongoDB databases.
+
+Mongoose can be intalled by running `npm i mongoose` in the terminal.
+
+### 1. MongoDB Setup:
+Firstly, ensure you have MongoDB installed and running either locally or on a remote server. MongoDB is typically accessed via a connection string, which specifies the database's location, port, and authentication details if required. We can do the following in the `index.mjs` file located in the src folder:
+
+```js
+import mongoose from 'mongoose'
+
+
+// Setup Database Connection
+mongoose.connect("mongodb://localhost:27017/express_tutorial")
+  .then(() => console.log('Connected to Database 🖥️'))
+  .catch((err) => console.log(`Error: ${err}`))
+
+```
+
+In this case, the connection string `mongodb://localhost:27017/express_tutorial` indicates that the database is running on port 27017 on the local machine. Normally the connection string is stored as an environment variable in a `.env` file for security purposes.
+
+### 2. Mongoose Integration:
+Mongoose simplifies working with MongoDB by providing a schema-based solution for modeling application data. It also provides features like validation, query building, and middleware hooks.
+
+```js
+import mongoose from "mongoose"
+
+const UserSchema = new mongoose.Schema({
+  username: {
+    type: mongoose.Schema.Types.String,
+    required: true,
+    unique: true
+  },
+
+  displayName: {
+    type: mongoose.Schema.Types.String,
+  },
+
+  password: {
+    type: mongoose.Schema.Types.String,
+    required: true
+  },
+
+});
+
+export const User = mongoose.model('User', UserSchema)
+```
+
+### 3. Defining a User Schema and Model:
+In the provided code snippet:
+
+- We import the `mongoose` library to utilize its functionality.
+- We define a `UserSchema` using `mongoose.Schema()`, where we specify the structure of the user document in MongoDB.
+- Inside the `UserSchema`, we define fields like `username`, `displayName`, and `password`, along with their respective data types and any additional properties like `required` and `unique`.
+- We export a Mongoose model named `User`, which is created using `mongoose.model()`. This model is a constructor function that provides an interface for interacting with the `users` collection in the MongoDB database. It's conventionally named in PascalCase and represents a singular version of the collection name.
+
+### 4. Usage in Express.js:
+Once the user schema and model are defined, you can integrate them into your Express.js application. For example, you might have routes that handle user registration, login, profile updates, etc. Within these routes, you can use the `User` model to perform CRUD operations on the MongoDB database.
+
+Here's a basic example of using the `User` model in an Express.js route:
+
+```javascript
+import express from 'express';
+import { User } from './schemas/UserSchema';
+
+const app = express();
+
+// Route to create a new user (Check usersx.mjs file )
+app.post('/users', async (req, res) => {
+  try {
+    const newUser = await User.create(req.body);
+    res.json(newUser);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Start the Express server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+
+```
+
+In this example, when a POST request is made to `/users`, a new user is created in the MongoDB database using the `User.create()` method provided by Mongoose.
+
+Note: Take a look at the `local-strategy-mongoose.mjs` file to see how passport is implemented on an existing MongoDB Database, including the auth routes in the `index.mjs` file.
 
