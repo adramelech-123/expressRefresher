@@ -849,3 +849,89 @@ In this example, when a POST request is made to `/users`, a new user is created 
 
 Note: Take a look at the `local-strategy-mongoose.mjs` file to see how passport is implemented on an existing MongoDB Database, including the auth routes in the `index.mjs` file.
 
+## 15. PASSWORD HASHING
+
+We will install a package called `bcrypt` to hash user passwords. We need to run `npm i bcrypt` in the terminal to install the package.
+
+We can create a separate `helpers.mjs` file in our `utils` folder to handle password hashing as follows:
+
+1. **Importing bcrypt**: This line imports the bcrypt library into the current file. 
+
+2. **Salt Rounds**: A salt is a random value that is combined with the password before hashing, making it more difficult for attackers to crack passwords using techniques like rainbow tables. `saltRounds` defines the number of rounds of hashing that bcrypt will use. More rounds result in a more secure hash but also increase the time it takes to generate the hash. Its usually recommended to use 10 rounds.
+
+   ```javascript
+   const saltRounds = 10;
+   ```
+
+3. **Hashing Function**: This function, `hashPassword`, takes a password as input and hashes it using bcrypt.
+
+   ```javascript
+   export const hashPassword = (password) => {
+   ```
+
+4. **Generating Salt**: The `genSaltSync()` function generates a salt synchronously. It takes the `saltRounds` as an argument. Since this is synchronous, it will block the event loop until the salt is generated. We can also generate a salt asynchronously by using `genSalt` instead of using `genSaltSync` and using the async/await syntax.
+
+   ```javascript
+   const salt = bcrypt.genSaltSync(saltRounds);
+   ```
+
+5. **Hashing the Password**: The `hashSync()` function hashes the password synchronously using the generated salt. It takes two arguments: the password to hash and the salt to use for hashing. We can also hash a password asynchronously suing `hash`.
+
+   ```javascript
+   bcrypt.hashSync(password, salt);
+   ```
+
+6. **Returning the Hashed Password**: You would need to add a `return` statement to return the hashed password.
+
+   ```javascript
+   return bcrypt.hashSync(password, salt);
+   ```
+
+So, the complete function would look like this:
+
+```javascript
+export const hashPassword = (password) => {
+    const salt = bcrypt.genSaltSync(saltRounds);
+    return bcrypt.hashSync(password, salt);
+}
+```
+
+Now, when you call `hashPassword("password123")`, it will return the hashed version of the password.
+
+Whenever we authenticate a user we will need to compare the password entered and the hashed password, we do this by using the `compareSync` function as follows:
+
+```js
+export const comparePassword = (plain, hashed) => {
+    // The compare function returns a boolean -> True if the passwords match
+    return bcrypt.compareSync(plain, hashed)
+}
+
+```
+
+The `comparePassword` function takes two parameters: `plain` (the plain-text password entered by the user) and `hashed` (the hashed password retrieved from the database). It uses `bcrypt.compareSync()` to compare the plain password with the hashed password. If they match, it returns `true`, indicating that the passwords match.
+
+In our `local-strategy` file, we will need to implement the `comparePassowrd` function on the password entered by the user through the Passport authentication strategy. If the comparePassword function returns false it would men the plain-text password and hashed password do not match and therefore the credentials entered are invalid :
+
+```js
+export default passport.use(
+  new Strategy( async (username, password, done) => {
+    
+    try {
+      const findUser = await User.findOne({ username })
+      if(!findUser) throw new Error('User not found!')
+
+      if(!comparePassword(password, findUser.password)) throw new Error("Invalid Credentials!");   
+
+      done(null, findUser);
+    } catch (error) {
+      done(error, null);
+    }
+
+  })
+);
+
+```
+
+
+
+

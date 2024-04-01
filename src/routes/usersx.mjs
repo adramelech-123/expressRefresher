@@ -2,6 +2,7 @@ import { Router } from "express";
 import { User } from "../mongoose/schemas/user.mjs"
 import { validationResult, matchedData, checkSchema } from "express-validator";
 import { userValidationSchema } from "../utils/validationSchemas.mjs";
+import { hashPassword } from "../utils/helpers.mjs";
 
 const router = Router();
 
@@ -27,6 +28,9 @@ router.post("/api/users", checkSchema(userValidationSchema) ,async (request, res
     }
 
     const newUserData = matchedData(request);
+    newUserData.password = hashPassword(newUserData.password)
+ 
+
     const newUser = new User(newUserData);
 
     try {
