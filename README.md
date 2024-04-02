@@ -931,7 +931,144 @@ export default passport.use(
 );
 
 ```
+## 16. SESSION STORE
+
+A session store is a mechanism for storing session data associated with a user's session. Sessions are used to maintain stateful information across HTTP requests in web applications. Session data typically includes user authentication status, user preferences, and other information relevant to the user's interaction with the application.
+
+The session store is responsible for securely storing session data and making it accessible to the server on subsequent requests from the same client. There are several types of session stores available in Express.js, including:
+
+1. **Memory Store**: The simplest session store implementation is the memory store, where session data is stored in memory on the server. However, this approach is not suitable for production environments as it does not scale well and session data is lost when the server restarts.
+
+2. **Cookie-based Store**: Sessions can also be implemented using cookies, where session data is stored encrypted in client-side cookies. While this approach is convenient, it has limitations such as cookie size restrictions and vulnerability to certain types of attacks such as CSRF (Cross-Site Request Forgery).
+
+3. **Database Store**: In a database store, session data is stored in a database (such as MongoDB or Redis) on the server. This approach is more scalable and secure than the memory store, as session data persists across server restarts and can be easily distributed across multiple servers in a clustered environment.
+
+4. **Redis Store**: Redis is a popular in-memory data store that is commonly used as a session store in Express.js applications. Redis provides high performance and scalability, making it well-suited for storing session data in large-scale applications.
+
+5. **Custom Store**: It's also possible to implement a custom session store by extending Express's session store interface. This allows developers to integrate with various data storage solutions or implement custom session management logic.
+
+Configuring a session store in an Express.js application involves specifying the session middleware and configuring the store to be used. Here's an example of how to configure a session store using the `express-session` middleware with `connect-mongo` a MongoDB session store for express:
+
+```js
+import MongoStore from "connect-mongo"
+
+app.use(session({
+  secret: 'mysecretsessionkey',
+  saveUninitialized: false,
+  resave: false,
+  cookie: {
+    maxAge: 60000 * 60
+  },
+  store: MongoStore.create({
+    client: mongoose.connection.getClient()
+  })
+}))
+```
+By defining the store as MongoStore with the client set to `mongoose.connection.getClient()`, we are able to store our sessions in mongoDB rather than the default memory store, therefore we will not have challenges of losing session data when the server restarts.
+
+## 17. OAUTH2
+
+We can setup OAUTH2 with PassportJS for authentication with 3rd Party providers such as Github, Facebook, Discord etc. In this example we will setup OAuth2 with Discord. We will headover to discord.com and look for the developer section and create a new application, name it to `Express_OAuth2`, and look for the OAuth2 settings page to get the `Client ID` and `Client Secret`. We must also specify at least one URI (Redirect URL/ Callback URL) for authentication to work, in this case we use `http://localhost:3000/api/auth/discord/redirect` since we are in development mode, we may need to set a different redirect for production mode.
+
+We should now go ahead with installing the strategy package for OAUTH2 for discord. Before installing ensure you have the base passport installed `npm i passport`. We install the strategy as follows `npm install passport-discord`. Once the installation is done, we setup a `discord-strategy.mjs` file to use `passport-discord`. Similar to what we did with the `local-strategy` we will need the strategy to validate our user, perform serialization of the user into the session and deserialization every time we visit a different endpoint.
+
+```js
+import passport from "passport";
+import { Strategy } from "passport-discord";
+import { config } from "dotenv";
+import { DiscordUser } from "../mongoose/schemas/discord-user.mjs";
+
+config()
+
+passport.serializeUser((user, done) => {
+  console.log(user);
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const findUser = await DiscordUser.findById(id)
+    
+    return findUser ? done(null, findUser) :  done(null, null)
+  } catch (error) {
+    done(error, null);
+  }
+});
 
 
+export default passport.use(
+  new Strategy(
+    {
+      clientID: process.env.DISCORD_CLIENT_ID,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET,
+      callbackURL: "http://localhost:3000/api/auth/discord/redirect",
+      scope: ['identify','email']
+    },
+    async (accessToken, refreshToken, profile, done) => {
+        console.log(profile)
+        let findUser
+
+        try {
+            // Check if user already exists in DB
+            findUser = await DiscordUser.findOne({ discordId: profile.id });
+        } catch (error) {
+            return done(error, null)
+        }
+
+        try {
+            // If user does not exist in DB, create new user
+            if (!findUser) {
+              const newUser = new DiscordUser({
+                username: profile.username,
+                discordId: profile.id,
+                email: profile.email,
+              });
+
+              const newSavedUser = await newUser.save();
+              return done(null, newSavedUser);
+            }
+
+            return done(null, findUser)
+        } catch (error) {
+            console.error(error)
+            return done(error, null)
+        }
+        
+
+        
+    }
+  )
+);
+
+```
+
+When we define our strategy we will need to pass in the strategy options as follows:
+
+```js
+ {
+      clientID: process.env.DISCORD_CLIENT_ID,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET,
+      callbackURL: "http://localhost:3000/api/auth/discord/redirect",
+      scope: ['identify','email']
+  },
+```
+We define the client ID, client secret and callbackURL for redirects. The scope simply defines the type of data we want to get from the users discord e.g. avatar, username, email etc. The scope parameters can usually be found in the documentation of the developer documentation of discord. If you are usin Github as a strategy you can get information on scope from the github docs.
+
+Now we can go ahead and create routes for the discord authentication as follows:
+
+```js
+import "./strategies/discord-strategy.mjs"
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Discord Auth Endpoints
+app.get("/api/auth/discord", passport.authenticate('discord'))
+app.get("/api/auth/discord/redirect", passport.authenticate('discord'), (request, response) => {
+  console.log(request.session)
+  console.log(request.user)
+  response.sendStatus(200)
+}
+```
 
 
