@@ -1071,4 +1071,88 @@ app.get("/api/auth/discord/redirect", passport.authenticate('discord'), (request
 }
 ```
 
+## 18. Unit Testing
 
+For us to continue to use ES modules with Jest, we will need to setup the BABEL transpiler so that it can transpile our ESM files to commonJS. To setup Babel we will need to install it as a dev dependency as follows:
+
+```bash
+npm i -D @babel/core @babel/node @babel/preset-env
+
+```
+
+In the root folder we create a `.babelrc` file to configure babel as follows:
+
+```json
+{
+    "presets": [
+        ["@babel/preset-env", {
+            "targets": {
+                "node": "current"
+            }
+        }]
+    ]
+}
+
+```
+
+Now we can go ahead and setup `jest` by first setting up a config file for jest as follows:
+
+```bash
+npm init jest@latest
+npm i -D jest
+```
+
+**The following questions will help Jest to create a suitable configuration for your project**
+
+- √ Would you like to use Jest when running "test" script in "package.json"? ... yes
+- √ Would you like to use Typescript for the configuration file? ... no
+- √ Choose the test environment that will be used for testing » node
+- √ Do you want Jest to add coverage reports? ... no
+- √ Which provider should be used to instrument code for coverage? » v8
+- √ Automatically clear mock calls, instances, contexts and results before every test? ... yes
+
+Once you have responded to these questions, the `package.json` file will be modified and a `jest.config.mjs`.
+
+Ensure that the following settings are present in the `jest.config.mjs` file:
+
+```json
+  // Automatically clear mock calls, instances, contexts and results before every test
+  clearMocks: true,
+
+  // An array of file extensions your modules use
+  moduleFileExtensions: [
+    "js",
+    "mjs",
+    "cjs",
+    "json",
+    "node"
+  ],
+
+  // A map from regular expressions to paths to transformers
+  transform: {
+    "^.+\\.m?js$": "babel-jest",
+  },
+
+```
+We should also install types for jest as follows:
+
+```bash
+npm i -D @types/jest
+```
+
+We can then create a `jsconfig.json` file and add the following settings to be able to use jest and its functions globally:
+
+```json
+{
+    "typeAcquisition": {
+        "include": [
+            "jest"
+        ]
+    }
+}
+```
+
+Now we can go ahead a setup our tests.
+
+1. Create a folder named `__tests__` in the src folder
+2. Create a file named after the item you want to test e.g. `users.test.js` or `users.spec.js`. 

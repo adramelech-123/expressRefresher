@@ -16,6 +16,7 @@ import {
   userValidationSchema,
   queryValidationSchema,
 } from "../utils/validationSchemas.mjs";
+import { getUserByIdHandler } from "../handlers/users.mjs";
 
 const router = Router()
 
@@ -51,13 +52,7 @@ router.get(
   "/api/users/:id",
   loggingMiddleware,
   resolveIndexByUserId,
-  (request, response) => {
-    const { findUserIndex } = request;
-    const findUser = mockUsers[findUserIndex];
-
-    if (!findUser) return response.sendStatus(404);
-    return response.send(findUser);
-  }
+  getUserByIdHandler
 );
 
 
