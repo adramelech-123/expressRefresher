@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { User } from "../mongoose/schemas/user.mjs"
-import { validationResult, matchedData, checkSchema } from "express-validator";
+import { checkSchema } from "express-validator";
 import { userValidationSchema } from "../utils/validationSchemas.mjs";
-import { hashPassword } from "../utils/helpers.mjs";
+import { createUserHandlerX } from "../handlers/users.mjs";
 
 const router = Router();
 
@@ -32,28 +32,7 @@ router.get("/api/users", async (request, response) => {
 });
 
 // CREATE NEW USER
-router.post("/api/users", checkSchema(userValidationSchema) ,async (request, response) => {
-  
-    const result = validationResult(request);
-
-    if (!result.isEmpty()) {
-      return response.status(400).send({ errors: result.array() });
-    }
-
-    const newUserData = matchedData(request);
-    newUserData.password = hashPassword(newUserData.password)
- 
-
-    const newUser = new User(newUserData);
-
-    try {
-        const savedUser = await newUser.save();
-        return response.status(201).send(savedUser);
-    } catch (error) {
-        console.log(error);
-        return response.sendStatus(400);
-    }
-});
+router.post("/api/users", checkSchema(userValidationSchema), createUserHandlerX);
 
 
 export default router;
