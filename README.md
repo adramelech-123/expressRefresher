@@ -1329,3 +1329,13 @@ We will need to install the following packages:
 ```bash
 npm i -D supertest
 ```
+
+We will create a folder called `e2e` and a file called `index.spec.js` to do all our integration and our E2E. Its industry standard to keep Unit Tests separate from E2E tests. We should add a test script in our `package.json` to only run E2E tests as follows:
+
+```json
+  "scripts": {
+    "test:e2e": "jest --testPathPattern=src/e2e",
+  }
+```
+The `testPathPattern` will determine which test file will be run.
+
